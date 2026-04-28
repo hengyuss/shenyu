@@ -17,15 +17,15 @@
 
 package org.apache.shenyu.admin.validation.validator;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.shenyu.common.enums.OperatorEnum;
+import org.springframework.web.util.pattern.PathPatternParser;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
-
-import org.apache.commons.lang3.StringUtils;
-import org.apache.shenyu.common.enums.OperatorEnum;
-import org.springframework.web.util.pattern.PathPatternParser;
 
 public class UriConditionValidator {
 
@@ -34,7 +34,12 @@ public class UriConditionValidator {
     static {
         VALIDATOR_MAP.put(OperatorEnum.PATH_PATTERN.getAlias(),
                 PathPatternParser.defaultInstance::parse);
-        VALIDATOR_MAP.put(OperatorEnum.REGEX.getAlias(), Pattern::compile);
+        VALIDATOR_MAP.put(OperatorEnum.REGEX.getAlias(), s -> {
+            if (s.length() > 256) {
+                throw new IllegalArgumentException("Regex too long");
+            }
+            Pattern.compile(s);
+        });
 
         Consumer<String> commonPathValidator = value -> {
             if (!value.startsWith("/")) {
