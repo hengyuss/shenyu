@@ -17,6 +17,7 @@
 
 package org.apache.shenyu.admin.validation.validator;
 
+import com.google.re2j.Pattern;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.shenyu.common.enums.OperatorEnum;
 import org.springframework.web.util.pattern.PathPatternParser;
@@ -25,7 +26,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
 
 public class UriConditionValidator {
 
