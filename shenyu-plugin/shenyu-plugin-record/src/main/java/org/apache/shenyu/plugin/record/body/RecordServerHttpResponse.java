@@ -2,6 +2,7 @@ package org.apache.shenyu.plugin.record.body;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.shenyu.plugin.base.utils.MediaTypeUtils;
+import org.apache.shenyu.plugin.record.collector.RecordCollector;
 import org.apache.shenyu.plugin.record.config.RecordCollectConfig;
 import org.apache.shenyu.plugin.record.entity.ShenyuHttpRequestRecord;
 import org.apache.shenyu.plugin.record.utils.RecordUtils;
@@ -30,14 +31,16 @@ public class RecordServerHttpResponse<L extends ShenyuHttpRequestRecord> extends
     private final L record;
 
     private ServerWebExchange exchange;
-    private static final String RECORD_CONTEXT_KEY = "record_context_key";
 
     private final ObjectMapper mapper = new ObjectMapper();
 
+    private final RecordCollector recordCollector;
 
-    public RecordServerHttpResponse(ServerHttpResponse delegate, L record) {
+
+    public RecordServerHttpResponse(final ServerHttpResponse delegate, final L record, final RecordCollector recordCollector) {
         super(delegate);
         this.record = record;
+        this.recordCollector = recordCollector;
     }
 
     public void setExchange(final ServerWebExchange exchange) {
@@ -68,13 +71,9 @@ public class RecordServerHttpResponse<L extends ShenyuHttpRequestRecord> extends
                 }
             }
         }).doFinally(signal -> {
-            try {
-                String respBody = writer.output();
-                record.setResponseBody(respBody);
-                saveRecordLocal();
-            }catch (IOException e) {
-                LOG.warn("write record response body error.", e);
-            }
+            String respBody = writer.output();
+            record.setResponseBody(respBody);
+            recordCollector.collect(record);
         });
     }
 

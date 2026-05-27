@@ -4,7 +4,10 @@ import org.apache.shenyu.common.dto.PluginData;
 import org.apache.shenyu.common.dto.RuleData;
 import org.apache.shenyu.common.dto.SelectorData;
 import org.apache.shenyu.common.enums.PluginEnum;
+import org.apache.shenyu.common.utils.GsonUtils;
 import org.apache.shenyu.plugin.base.handler.PluginDataHandler;
+import org.apache.shenyu.plugin.record.collector.RecordCollector;
+import org.apache.shenyu.plugin.record.config.RecordCollectConfig;
 
 public class RecordPluginDataHandler implements PluginDataHandler {
     @Override
@@ -14,7 +17,9 @@ public class RecordPluginDataHandler implements PluginDataHandler {
 
     @Override
     public void handlerPlugin(PluginData pluginData) {
-        PluginDataHandler.super.handlerPlugin(pluginData);
+        RecordCollectConfig.RecordConfig recordConfig = GsonUtils.getGson().fromJson(pluginData.getConfig(), RecordCollectConfig.RecordConfig.class);
+        RecordCollectConfig.INSTANCE.setRecordConfig(recordConfig);
+        RecordCollector.INSTANCE.start();
     }
 
     @Override

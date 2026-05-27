@@ -10,7 +10,6 @@ import reactor.util.annotation.NonNull;
 public class RecordServerHttpRequest<L extends ShenyuHttpRequestRecord> extends ServerHttpRequestDecorator {
 
     private final L record;
-    private static final String RECORD_CONTEXT_KEY = "record_context_key";
 
     public RecordServerHttpRequest(final ServerHttpRequest delegate, final L record) {
         super(delegate);

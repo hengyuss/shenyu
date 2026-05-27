@@ -41,6 +41,8 @@ public class RecordCollector {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
+    public static final RecordCollector INSTANCE = new RecordCollector();
+
     public void start(){
         bufferSize = RecordCollectConfig.INSTANCE.getRecordConfig().getBufferQueueSize();
         bufferQueue = new LinkedBlockingDeque<>(bufferSize);
@@ -69,8 +71,8 @@ public class RecordCollector {
             int diffTimeMSForPush = 100;
             try {
                 List<ShenyuHttpRequestRecord> records = new ArrayList<>();
-                int barchSize = 100;
-                processBufferQueue(bufferQueue, barchSize, records, diffTimeMSForPush, lastPushTime);
+                int bachSize = 100;
+                processBufferQueue(bufferQueue, bachSize, records, diffTimeMSForPush, lastPushTime);
             } catch (Throwable t){
                 LOG.error("ShenyuHttpRequestRecord collect log error", t);
                 ThreadUtils.sleep(TimeUnit.MILLISECONDS, diffTimeMSForPush);
@@ -78,13 +80,13 @@ public class RecordCollector {
         }
     }
 
-    private void processBufferQueue(final BlockingQueue<ShenyuHttpRequestRecord> bufferQueue, final int barchSize,
+    private void processBufferQueue(final BlockingQueue<ShenyuHttpRequestRecord> bufferQueue, final int bachSize,
                                     final List<ShenyuHttpRequestRecord> records, final int diffTimeMSForPush, final long lastPushTime) {
         int size = bufferQueue.size();
         long time = System.currentTimeMillis();
         long timeDiffMs = time - lastPushTime;
-        if(size >= barchSize || timeDiffMs >= diffTimeMSForPush){
-            bufferQueue.drainTo(records, barchSize);
+        if(size >= bachSize || timeDiffMs >= diffTimeMSForPush){
+            bufferQueue.drainTo(records, bachSize);
             writeToFile(records);
             this.lastPushTime = time;
         } else {
@@ -103,7 +105,6 @@ public class RecordCollector {
 
             StringBuilder sb = new StringBuilder();
             for (ShenyuHttpRequestRecord record : records) {
-                // 注意这里不要 pretty print，压缩成一行
                 sb.append(mapper.writeValueAsString(record)).append(System.lineSeparator());
             }
 
@@ -114,11 +115,13 @@ public class RecordCollector {
                     StandardOpenOption.CREATE,
                     StandardOpenOption.APPEND);
 
-            LOG.info("[RecordPlugin] success save {} records", records.size());
         } catch (Exception e) {
             LOG.error("[RecordPlugin] write fail", e);
         }
     }
 
+    public static RecordCollector getInstance() {
+        return INSTANCE;
+    }
 
 }
