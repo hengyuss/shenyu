@@ -305,7 +305,7 @@ public enum PluginEnum {
     /**
      * Record plugin enum.
      */
-    RECORD(151, 0, "record");
+    HTTP_RECORD(215, 0, "httpRecord");
     
     /**
      * When the application starts, the plugin is cached and we can obtained by name.

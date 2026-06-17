@@ -1,9 +1,25 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.shenyu.plugin.record.body;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.shenyu.plugin.base.utils.MediaTypeUtils;
-import org.apache.shenyu.plugin.record.collector.RecordCollector;
-import org.apache.shenyu.plugin.record.config.RecordCollectConfig;
+import org.apache.shenyu.plugin.record.collector.HttpRecordCollector;
+import org.apache.shenyu.plugin.record.config.HttpRecordCollectConfig;
 import org.apache.shenyu.plugin.record.entity.ShenyuHttpRequestRecord;
 import org.apache.shenyu.plugin.record.utils.RecordUtils;
 import org.reactivestreams.Publisher;
@@ -18,52 +34,63 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.NonNull;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.Objects;
 
+/**
+ * RecordServerHttpResponse.
+ *
+ * <p>Decorator that captures response status, headers, and body for recording.
+ * When the response body is binary type, only metadata is captured.</p>
+ */
 public class RecordServerHttpResponse<L extends ShenyuHttpRequestRecord> extends ServerHttpResponseDecorator {
 
     private static final Logger LOG = LoggerFactory.getLogger(RecordServerHttpResponse.class);
+
+    private static final String TRUNCATED_PREFIX = "[TRUNCATED] ";
+
     private final L record;
 
-    private ServerWebExchange exchange;
+    private final ServerWebExchange exchange;
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final HttpRecordCollector httpRecordCollector;
 
-    private final RecordCollector recordCollector;
+    private final int maxBodySize;
 
-
-    public RecordServerHttpResponse(final ServerHttpResponse delegate, final L record, final RecordCollector recordCollector) {
+    /**
+     * Constructor.
+     *
+     * @param delegate the original response
+     * @param record the record object to populate
+     * @param httpRecordCollector the collector to submit the record to
+     * @param exchange the server web exchange
+     */
+    public RecordServerHttpResponse(final ServerHttpResponse delegate, final L record,
+                                    final HttpRecordCollector httpRecordCollector,
+                                    final ServerWebExchange exchange) {
         super(delegate);
         this.record = record;
-        this.recordCollector = recordCollector;
-    }
-
-    public void setExchange(final ServerWebExchange exchange) {
+        this.httpRecordCollector = httpRecordCollector;
         this.exchange = exchange;
+        this.maxBodySize = HttpRecordCollectConfig.INSTANCE.getRecordConfig().getMaxBodySize();
     }
 
     @Override
-    public Mono<Void> writeWith(Publisher<? extends DataBuffer> body) {
+    public Mono<Void> writeWith(final Publisher<? extends DataBuffer> body) {
         return super.writeWith(appendResponse(body));
     }
 
-
     @NonNull
-    private Flux<? extends DataBuffer> appendResponse(Publisher<? extends DataBuffer> body) {
+    private Flux<? extends DataBuffer> appendResponse(final Publisher<? extends DataBuffer> body) {
         if (Objects.nonNull(getStatusCode())) {
             record.setStatus(getStatusCode().value());
         }
         record.setResponseHeaders(RecordUtils.getHeaders(getHeaders()));
         final MediaType mediaType = exchange.getResponse().getHeaders().getContentType();
         if (MediaTypeUtils.isByteType(mediaType)) {
+            httpRecordCollector.collect(record);
             return Flux.from(body);
         }
-        BodyWriter writer = new BodyWriter();
+        BodyWriter writer = new BodyWriter(maxBodySize);
         return Flux.from(body).doOnNext(buffer -> {
             if (RecordUtils.isNotBinaryType(getHeaders())) {
                 try (DataBuffer.ByteBufferIterator bufferIterator = buffer.readableByteBuffers()) {
@@ -71,21 +98,12 @@ public class RecordServerHttpResponse<L extends ShenyuHttpRequestRecord> extends
                 }
             }
         }).doFinally(signal -> {
-            String respBody = writer.output();
-            record.setResponseBody(respBody);
-            recordCollector.collect(record);
+            if (writer.isSizeExceeded()) {
+                record.setResponseBody(TRUNCATED_PREFIX + "response body exceeded max size of " + maxBodySize + " bytes");
+            } else {
+                record.setResponseBody(writer.output());
+            }
+            httpRecordCollector.collect(record);
         });
-    }
-
-    private void saveRecordLocal() throws IOException {
-        String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(record);
-        Path path = Paths.get(RecordCollectConfig.INSTANCE.getRecordConfig().getStoragePath() + "test.json");
-
-        Path parentDir = path.getParent();
-        if (parentDir != null && !Files.exists(parentDir)) {
-            Files.createDirectories(parentDir);
-        }
-        Files.write(path, json.getBytes(),
-                StandardOpenOption.CREATE, StandardOpenOption.WRITE);
     }
 }

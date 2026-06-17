@@ -15,4 +15,4 @@
 # limitations under the License.
 #
 
-org.apache.shenyu.springboot.plugin.record.RecordPluginConfiguration
+org.apache.shenyu.springboot.plugin.http.record.HttpRecordPluginConfiguration

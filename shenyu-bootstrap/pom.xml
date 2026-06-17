@@ -619,7 +619,7 @@
 
         <dependency>
             <groupId>org.apache.shenyu</groupId>
-            <artifactId>shenyu-spring-boot-starter-plugin-record</artifactId>
+            <artifactId>shenyu-spring-boot-starter-plugin-http-record</artifactId>
             <version>${project.version}</version>
         </dependency>
 

@@ -15,4 +15,4 @@
 # limitations under the License.
 #
 
-provides: shenyu-spring-boot-starter-plugin-record
+provides: shenyu-spring-boot-starter-plugin-http-record
