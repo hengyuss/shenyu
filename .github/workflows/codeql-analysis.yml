@@ -24,12 +24,12 @@ on:
   pull_request:
     paths:
       - '**/*.java'
+  workflow_dispatch:  # <--- 新增：允许手动触发
 
 jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
-    if: (github.repository == 'apache/shenyu')
 
     strategy:
       fail-fast: false
